@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="description" content="Track your income and expenses offline">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Budget Track">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icon-512.png">
+  <title>Budget Track</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+</head>
+<body>
+  <div class="offline-banner" id="offline-banner" role="status">You're offline. Data is saved on this device.</div>
+  <div class="app">
+    <header class="header">
+      <h1 class="logo">Budget Track</h1>
+    </header>
+
+    <nav class="nav-modules" role="tablist" aria-label="App sections">
+      <button type="button" class="nav-module active" role="tab" aria-selected="true" data-module="overview" id="tab-overview">Overview</button>
+      <button type="button" class="nav-module" role="tab" aria-selected="false" data-module="add" id="tab-add">Add</button>
+      <button type="button" class="nav-module" role="tab" aria-selected="false" data-module="charts" id="tab-charts">Charts</button>
+      <button type="button" class="nav-module" role="tab" aria-selected="false" data-module="transactions" id="tab-transactions">Transactions</button>
+    </nav>
+
+    <main class="main">
+      <!-- Module: Overview -->
+      <section class="module-panel active" id="panel-overview" data-module="overview" role="tabpanel" aria-labelledby="tab-overview">
+        <div class="section overview-summary">
+          <div class="balance-card">
+            <span class="balance-label">Balance</span>
+            <span class="balance-value" id="balance">₹0</span>
+            <!-- <span class="balance-formula">Income − Expenses</span> -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Module: Add transaction -->
+      <section class="module-panel" id="panel-add" data-module="add" role="tabpanel" aria-labelledby="tab-add" hidden>
+        <div class="section add-transaction">
+          <h2>Add transaction</h2>
+          <form id="transaction-form" class="transaction-form">
+            <div class="type-category-wrapper">
+              <input type="radio" name="type" value="income" id="type-income" checked class="type-radio">
+              <input type="radio" name="type" value="expense" id="type-expense" class="type-radio">
+              <div class="form-row">
+                <label for="type-income" class="radio-group">
+                  <span class="radio-label income">Income</span>
+                </label>
+                <label for="type-expense" class="radio-group">
+                  <span class="radio-label expense">Expense</span>
+                </label>
+              </div>
+              <div class="form-group category-income-wrap">
+                <label for="category-income">Category</label>
+                <select id="category-income" name="category">
+                  <option value="">Select category</option>
+                  <option value="Salary">Salary</option>
+                  <option value="Freelance">Freelance</option>
+                  <option value="Investment">Investment Returns</option>
+                  <option value="Dividends">Dividends</option>
+                  <option value="Interest">Interest From Bank</option>             
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div class="form-group category-expense-wrap">
+                <label for="category-expense">Category</label>
+                <select id="category-expense" name="category">
+                  <option value="">Select category</option>
+                  <option value="Grocery">Grocery</option>
+                  <option value="Rent">Rent</option>
+                  <option value="Bills">Bills</option>
+                  <option value="Travel">Travel</option>
+                  <option value="Food">Food</option>
+                  <option value="Entertainment">Entertainment</option>
+                  <option value="Health">Health</option>
+                  <option value="Education">Education</option>               
+                
+                  <option value="Transport">Transport</option>
+                  
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="amount">Amount</label>
+              <input type="number" id="amount" name="amount" min="0" step="0.01" placeholder="0.00" required>
+            </div>
+            <div class="form-group">
+              <label for="date">Date</label>
+              <input type="date" id="date" name="date" required>
+            </div>
+            <div class="form-group">
+              <label for="note">Note (optional)</label>
+              <input type="text" id="note" name="note" placeholder="e.g. Salary, Groceries">
+            </div>
+            <button type="submit" class="btn btn-primary">Add transaction</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Module: Charts -->
+      <section class="module-panel" id="panel-charts" data-module="charts" role="tabpanel" aria-labelledby="tab-charts" hidden>
+        <div class="section charts-section">
+          <h2>Charts</h2>
+          <div class="chart-tabs">
+            <button type="button" class="chart-tab active" data-period="weekly">Weekly</button>
+            <button type="button" class="chart-tab" data-period="monthly">Monthly</button>
+            <button type="button" class="chart-tab" data-period="yearly">Yearly</button>
+          </div>
+          <div class="chart-container">
+            <canvas id="chart-canvas" aria-label="Income vs expenses chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Module: Transactions -->
+      <section class="module-panel" id="panel-transactions" data-module="transactions" role="tabpanel" aria-labelledby="tab-transactions" hidden>
+        <div class="section transactions-section">
+          <div class="section-header">
+            <h2>Transactions</h2>
+            <button type="button" class="btn btn-secondary" id="export-pdf" title="Download PDF">Export PDF</button>
+          </div>
+          <div class="filter-bar">
+            <select id="filter-period">
+              <option value="all">All time</option>
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+              <option value="year">This year</option>
+            </select>
+            <select id="filter-type">
+              <option value="all">All</option>
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+            </select>
+          </div>
+          <ul class="transaction-list" id="transaction-list"></ul>
+          <p class="empty-state" id="empty-state">No transactions yet. Add one in the Add module.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Data is stored on this device only. Works offline.</p>
+    </footer>
+  </div>
+
+  <!-- Module tabs: works even if app.js or CDN fails (e.g. when opening from file://) -->
+  <script>
+    (function() {
+      function initTabs() {
+        var nav = document.querySelector('.nav-modules');
+        var panels = document.querySelectorAll('.module-panel');
+        if (!nav || !panels.length) return;
+        nav.addEventListener('click', function(e) {
+          var el = e.target;
+          if (!el || el.nodeType !== 1) return;
+          var btn = null;
+          while (el && el !== nav) {
+            if (el.classList && el.classList.contains('nav-module')) { btn = el; break; }
+            el = el.parentElement;
+          }
+          if (!btn) return;
+          var mod = btn.getAttribute('data-module');
+          if (!mod) return;
+          nav.querySelectorAll('.nav-module').forEach(function(b) {
+            b.classList.toggle('active', b.getAttribute('data-module') === mod);
+            b.setAttribute('aria-selected', b.getAttribute('data-module') === mod);
+          });
+          panels.forEach(function(p) {
+            var on = p.getAttribute('data-module') === mod;
+            p.classList.toggle('active', on);
+            p.hidden = !on;
+          });
+          if (mod === 'add') {
+            try { document.dispatchEvent(new CustomEvent('budget-add-shown')); } catch (err) {}
+          }
+          if (mod === 'overview') {
+            try { document.dispatchEvent(new CustomEvent('budget-overview-shown')); } catch (err) {}
+          }
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTabs);
+      } else {
+        initTabs();
+      }
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" crossorigin></script>
+  <script src="app.js"></script>
+</body>
+</html>
