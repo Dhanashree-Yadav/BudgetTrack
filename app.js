@@ -6,8 +6,68 @@
 
   var INCOME_CATEGORIES = ['Salary', 'Freelance', 'Investment', 'Other'];
   var EXPENSE_CATEGORIES = ['Grocery', 'Rent', 'Bills'];
+
+  var CATEGORY_ICONS = {
+    Salary: '💼',
+    Freelance: '💻',
+    Investment: '📈',
+    'Investment Returns': '📈',
+    Dividends: '💹',
+    Interest: '🏦',
+    'Interest From Bank': '🏦',
+    Other: '📌',
+    Grocery: '🛒',
+    Rent: '🏠',
+    Bills: '🧾',
+    Travel: '✈️',
+    Food: '🍽️',
+    Entertainment: '🎬',
+    Health: '⚕️',
+    Education: '📚',
+    Transport: '🚗'
+  };
+
+  function getCategoryIcon(categoryName) {
+    if (!categoryName) return '📋';
+    return CATEGORY_ICONS[categoryName] || '📋';
+  }
   var editingTransactionId = null;
   var openingForEdit = false;
+  var THEME_KEY = 'budget_theme';
+
+  function applyTheme(theme) {
+    var html = document.documentElement;
+    var meta = document.getElementById('meta-theme-color');
+    if (theme === 'dark') {
+      html.setAttribute('data-theme', 'dark');
+      if (meta) meta.setAttribute('content', '#0f172a');
+    } else {
+      html.removeAttribute('data-theme');
+      if (meta) meta.setAttribute('content', '#f1f5f9');
+    }
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch (e) {}
+  }
+
+  function initTheme() {
+    var btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    var saved = null;
+    try {
+      saved = localStorage.getItem(THEME_KEY);
+    } catch (e) {}
+    if (saved === 'dark') applyTheme('dark');
+    else applyTheme('light');
+    btn.addEventListener('click', function () {
+      var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      applyTheme(isDark ? 'light' : 'dark');
+      if (typeof Chart !== 'undefined') {
+        var tab = document.querySelector('.chart-tab.active');
+        if (tab) renderChart(tab.dataset.period);
+      }
+    });
+  }
 
   function getUserId() {
     let id = localStorage.getItem(USER_ID_KEY);
@@ -76,18 +136,56 @@
   }
 
   function getFilterParams() {
-    return {
-      period: document.getElementById('filter-period').value,
-      type: document.getElementById('filter-type').value
+    var periodEl = document.getElementById('filter-period');
+    var typeEl = document.getElementById('filter-type');
+    var fromEl = document.getElementById('filter-date-from');
+    var toEl = document.getElementById('filter-date-to');
+    var period = periodEl ? periodEl.value : 'all';
+    var params = {
+      period: period,
+      type: typeEl ? typeEl.value : 'all'
     };
+    if (period === 'custom') {
+      params.dateFrom = fromEl && fromEl.value ? fromEl.value : '';
+      params.dateTo = toEl && toEl.value ? toEl.value : '';
+    }
+    return params;
   }
 
   function filterTransactions(list, params) {
-    let out = list.slice();
-    const now = new Date();
+    var out = list.slice();
+    var now = new Date();
 
-    if (params.period !== 'all') {
-      const start = new Date(now);
+    if (params.period === 'custom' && (params.dateFrom || params.dateTo)) {
+      var fromStr = params.dateFrom;
+      var toStr = params.dateTo;
+      var startDate = null;
+      var endDate = null;
+      if (fromStr) {
+        startDate = new Date(fromStr);
+        startDate.setHours(0, 0, 0, 0);
+      }
+      if (toStr) {
+        endDate = new Date(toStr);
+        endDate.setHours(23, 59, 59, 999);
+      }
+      if (startDate && endDate && startDate > endDate) {
+        var swap = fromStr;
+        fromStr = toStr;
+        toStr = swap;
+        startDate = new Date(fromStr);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(toStr);
+        endDate.setHours(23, 59, 59, 999);
+      }
+      out = out.filter(function (t) {
+        var d = new Date(t.date);
+        if (startDate && d < startDate) return false;
+        if (endDate && d > endDate) return false;
+        return true;
+      });
+    } else if (params.period !== 'all' && params.period !== 'custom') {
+      var start = new Date(now);
       if (params.period === 'week') {
         start.setDate(now.getDate() - now.getDay());
         start.setHours(0, 0, 0, 0);
@@ -98,14 +196,14 @@
         start.setMonth(0, 1);
         start.setHours(0, 0, 0, 0);
       }
-      out = out.filter(t => new Date(t.date) >= start);
+      out = out.filter(function (t) { return new Date(t.date) >= start; });
     }
 
     if (params.type !== 'all') {
-      out = out.filter(t => t.type === params.type);
+      out = out.filter(function (t) { return t.type === params.type; });
     }
 
-    return out.sort((a, b) => new Date(b.date) - new Date(a.date));
+    return out.sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
   }
 
   function renderTransactionList() {
@@ -128,7 +226,7 @@
       li.dataset.id = t.id;
       li.innerHTML =
         '<div class="left">' +
-          '<span class="category">' + escapeHtml(t.category) + '</span>' +
+          '<span class="category"><span class="category-icon" aria-hidden="true">' + getCategoryIcon(t.category) + '</span> ' + escapeHtml(t.category) + '</span>' +
           '<span class="date">' + formatDate(t.date) + '</span>' +
         '</div>' +
         '<span class="amount">' + (t.type === 'income' ? '+' : '-') + formatCurrency(t.amount) + '</span>' +
@@ -410,7 +508,7 @@
 
     doc.setFontSize(18);
     doc.setTextColor(15, 23, 42);
-    doc.text('Budget Track - Transactions', 14, y);
+    doc.text('DhanTrack - Transactions', 14, y);
     y += 10;
 
     doc.setFontSize(10);
@@ -549,11 +647,31 @@
     });
   }
 
+  function toggleCustomRangeVisibility() {
+    var fp = document.getElementById('filter-period');
+    var wrap = document.getElementById('filter-custom-range');
+    if (!wrap) return;
+    if (fp && fp.value === 'custom') {
+      wrap.classList.remove('hidden');
+    } else {
+      wrap.classList.add('hidden');
+    }
+  }
+
   function initFilters() {
     var fp = document.getElementById('filter-period');
     var ft = document.getElementById('filter-type');
-    if (fp) fp.addEventListener('change', renderTransactionList);
+    var fromEl = document.getElementById('filter-date-from');
+    var toEl = document.getElementById('filter-date-to');
+    function refresh() {
+      toggleCustomRangeVisibility();
+      renderTransactionList();
+    }
+    if (fp) fp.addEventListener('change', refresh);
     if (ft) ft.addEventListener('change', renderTransactionList);
+    if (fromEl) fromEl.addEventListener('change', renderTransactionList);
+    if (toEl) toEl.addEventListener('change', renderTransactionList);
+    toggleCustomRangeVisibility();
   }
 
   function initPdf() {
@@ -595,6 +713,7 @@
   }
 
   function init() {
+    initTheme();
     try {
       getUserId();
     } catch (err) {}
