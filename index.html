@@ -3,22 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#0f172a">
+  <meta name="theme-color" content="#f1f5f9" id="meta-theme-color">
   <meta name="description" content="Track your income and expenses offline">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Budget Track">
+  <meta name="apple-mobile-web-app-title" content="DhanTrack">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/icon-512.png">
-  <title>Budget Track</title>
+  <title>DhanTrack</title>
   <link rel="stylesheet" href="styles.css">
+  <script>
+    (function(){ try { var t = localStorage.getItem('budget_theme'); if (t === 'dark') document.documentElement.setAttribute('data-theme','dark'); } catch(e) {} })();
+  </script>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 </head>
 <body>
   <div class="offline-banner" id="offline-banner" role="status">You're offline. Data is saved on this device.</div>
+
   <div class="app">
     <header class="header">
-      <h1 class="logo">Budget Track</h1>
+      <div class="header-row">
+        <h1 class="logo">DhanTrack</h1>
+        <div class="header-actions">
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle theme" title="Dark mode / Light mode">
+          <span class="theme-icon theme-icon-dark" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </span>
+          <span class="theme-icon theme-icon-light" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </span>
+        </button>
+        </div>
+      </div>
     </header>
 
     <nav class="nav-modules" role="tablist" aria-label="App sections">
@@ -60,30 +76,28 @@
                 <label for="category-income">Category</label>
                 <select id="category-income" name="category">
                   <option value="">Select category</option>
-                  <option value="Salary">Salary</option>
-                  <option value="Freelance">Freelance</option>
-                  <option value="Investment">Investment Returns</option>
-                  <option value="Dividends">Dividends</option>
-                  <option value="Interest">Interest From Bank</option>             
-                  <option value="Other">Other</option>
+                  <option value="Salary">💼 Salary</option>
+                  <option value="Freelance">💻 Freelance</option>
+                  <option value="Investment">📈 Investment Returns</option>
+                  <option value="Dividends">💹 Dividends</option>
+                  <option value="Interest">🏦 Interest From Bank</option>
+                  <option value="Other">📌 Other</option>
                 </select>
               </div>
               <div class="form-group category-expense-wrap">
                 <label for="category-expense">Category</label>
                 <select id="category-expense" name="category">
                   <option value="">Select category</option>
-                  <option value="Grocery">Grocery</option>
-                  <option value="Rent">Rent</option>
-                  <option value="Bills">Bills</option>
-                  <option value="Travel">Travel</option>
-                  <option value="Food">Food</option>
-                  <option value="Entertainment">Entertainment</option>
-                  <option value="Health">Health</option>
-                  <option value="Education">Education</option>               
-                
-                  <option value="Transport">Transport</option>
-                  
-                  <option value="Other">Other</option>
+                  <option value="Grocery">🛒 Grocery</option>
+                  <option value="Rent">🏠 Rent</option>
+                  <option value="Bills">🧾 Bills</option>
+                  <option value="Travel">✈️ Travel</option>
+                  <option value="Food">🍽️ Food</option>
+                  <option value="Entertainment">🎬 Entertainment</option>
+                  <option value="Health">⚕️ Health</option>
+                  <option value="Education">📚 Education</option>
+                  <option value="Transport">🚗 Transport</option>
+                  <option value="Other">📌 Other</option>
                 </select>
               </div>
             </div>
@@ -132,12 +146,23 @@
               <option value="week">This week</option>
               <option value="month">This month</option>
               <option value="year">This year</option>
+              <option value="custom">Custom range…</option>
             </select>
             <select id="filter-type">
               <option value="all">All</option>
               <option value="income">Income</option>
               <option value="expense">Expense</option>
             </select>
+          </div>
+          <div class="filter-custom-range hidden" id="filter-custom-range">
+            <div class="form-group filter-date-group">
+              <label for="filter-date-from">From</label>
+              <input type="date" id="filter-date-from" name="filter-date-from">
+            </div>
+            <div class="form-group filter-date-group">
+              <label for="filter-date-to">To</label>
+              <input type="date" id="filter-date-to" name="filter-date-to">
+            </div>
           </div>
           <ul class="transaction-list" id="transaction-list"></ul>
           <p class="empty-state" id="empty-state">No transactions yet. Add one in the Add module.</p>
