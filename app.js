@@ -3,6 +3,7 @@
 
   const USER_ID_KEY = 'budget_user_id';
   const DATA_KEY_PREFIX = 'budget_data_';
+  const CONTEXT_KEY = 'budget_context';
 
   var INCOME_CATEGORIES = ['Salary', 'Freelance', 'Investment', 'Other'];
   var EXPENSE_CATEGORIES = ['Grocery', 'Rent', 'Bills'];
@@ -69,6 +70,36 @@
     });
   }
 
+  function applyContextUI(ctx) {
+    var personalBtn = document.getElementById('context-personal');
+    var officeBtn = document.getElementById('context-office');
+    if (personalBtn) {
+      personalBtn.classList.toggle('active', ctx === 'personal');
+      personalBtn.setAttribute('aria-pressed', ctx === 'personal');
+    }
+    if (officeBtn) {
+      officeBtn.classList.toggle('active', ctx === 'office');
+      officeBtn.setAttribute('aria-pressed', ctx === 'office');
+    }
+  }
+
+  function initContext() {
+    var personalBtn = document.getElementById('context-personal');
+    var officeBtn = document.getElementById('context-office');
+    applyContextUI(getContext());
+    function switchContext(ctx) {
+      if (ctx !== 'personal' && ctx !== 'office') return;
+      setContext(ctx);
+      applyContextUI(ctx);
+      updateSummary();
+      renderTransactionList();
+      var chartTab = document.querySelector('.chart-tab.active');
+      if (typeof Chart !== 'undefined' && chartTab) renderChart(chartTab.dataset.period);
+    }
+    if (personalBtn) personalBtn.addEventListener('click', function () { switchContext('personal'); });
+    if (officeBtn) officeBtn.addEventListener('click', function () { switchContext('office'); });
+  }
+
   function getUserId() {
     let id = localStorage.getItem(USER_ID_KEY);
     if (!id) {
@@ -78,13 +109,40 @@
     return id;
   }
 
+  function getContext() {
+    try {
+      var c = localStorage.getItem(CONTEXT_KEY);
+      return (c === 'office' || c === 'personal') ? c : 'personal';
+    } catch (e) {
+      return 'personal';
+    }
+  }
+
+  function setContext(ctx) {
+    try {
+      if (ctx === 'office' || ctx === 'personal') {
+        localStorage.setItem(CONTEXT_KEY, ctx);
+      }
+    } catch (e) {}
+  }
+
   function getStorageKey() {
-    return DATA_KEY_PREFIX + getUserId();
+    return DATA_KEY_PREFIX + getUserId() + '_' + getContext();
   }
 
   function getTransactions() {
     try {
-      var raw = localStorage.getItem(getStorageKey());
+      var key = getStorageKey();
+      var raw = localStorage.getItem(key);
+      if (getContext() === 'personal' && !raw) {
+        var legacyKey = DATA_KEY_PREFIX + getUserId();
+        var legacy = localStorage.getItem(legacyKey);
+        if (legacy) {
+          localStorage.setItem(key, legacy);
+          localStorage.removeItem(legacyKey);
+          raw = legacy;
+        }
+      }
       return raw ? JSON.parse(raw) : [];
     } catch (err) {
       return [];
@@ -227,7 +285,7 @@
       li.innerHTML =
         '<div class="left">' +
           '<span class="category"><span class="category-icon" aria-hidden="true">' + getCategoryIcon(t.category) + '</span> ' + escapeHtml(t.category) + '</span>' +
-          '<span class="date">' + formatDate(t.date) + '</span>' +
+          '<span class="date">' + formatDate(t.date) + (t.mode === 'online' ? ' · Online' : ' · Cash') + '</span>' +
         '</div>' +
         '<span class="amount">' + (t.type === 'income' ? '+' : '-') + formatCurrency(t.amount) + '</span>' +
         '<div class="item-actions">' +
@@ -410,12 +468,14 @@
       var list = getTransactions();
       var id = 'txn_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
       var type = (data.type && String(data.type).toLowerCase()) || 'expense';
+      var mode = (data.mode && String(data.mode).toLowerCase()) || 'cash';
       list.push({
         id: id,
         type: type,
         amount: parseAmount(data.amount),
         category: data.category || '',
         date: data.date || todayStr(),
+        mode: mode === 'online' ? 'online' : 'cash',
         note: (data.note || '').trim()
       });
       saveTransactions(list);
@@ -442,12 +502,14 @@
     var idx = list.findIndex(function (t) { return t.id === id; });
     if (idx === -1) return;
     var type = (data.type && String(data.type).toLowerCase()) || 'expense';
+    var mode = (data.mode && String(data.mode).toLowerCase()) === 'online' ? 'online' : 'cash';
     list[idx] = {
       id: id,
       type: type,
       amount: parseAmount(data.amount),
       category: data.category || '',
       date: data.date || todayStr(),
+      mode: mode,
       note: (data.note || '').trim()
     };
     saveTransactions(list);
@@ -476,6 +538,13 @@
       if (expenseRadio) expenseRadio.checked = true;
       var expenseSelect = document.getElementById('category-expense');
       if (expenseSelect) expenseSelect.value = t.category || '';
+    }
+    var modeOnline = document.getElementById('mode-online');
+    var modeCash = document.getElementById('mode-cash');
+    if (t.mode === 'online') {
+      if (modeOnline) modeOnline.checked = true;
+    } else {
+      if (modeCash) modeCash.checked = true;
     }
     updateCategoryRequired();
     switchModule('add');
@@ -524,8 +593,8 @@
 
     doc.setFontSize(9);
     doc.setTextColor(30, 41, 59);
-    var headers = ['Date', 'Type', 'Category', 'Note', 'Amount'];
-    var colW = [28, 22, 40, 50, 30];
+    var headers = ['Date', 'Type', 'Mode', 'Category', 'Note', 'Amount'];
+    var colW = [24, 18, 18, 32, 42, 28];
     var x = 14;
     headers.forEach(function (h, i) {
       doc.setFont(undefined, 'bold');
@@ -546,10 +615,12 @@
       x += colW[0];
       doc.text(t.type === 'income' ? 'Income' : 'Expense', x, y);
       x += colW[1];
-      doc.text(String(t.category || '').slice(0, 20), x, y);
+      doc.text((t.mode === 'online' ? 'Online' : 'Cash'), x, y);
       x += colW[2];
-      doc.text(String(t.note || '').slice(0, 25), x, y);
+      doc.text(String(t.category || '').slice(0, 18), x, y);
       x += colW[3];
+      doc.text(String(t.note || '').slice(0, 20), x, y);
+      x += colW[4];
       doc.text(formatAmountForPdf(t.amount, t.type === 'income'), x, y);
       if (t.type === 'income') totalIncome += parseAmount(t.amount);
       else totalExpense += parseAmount(t.amount);
@@ -616,7 +687,9 @@
           var amountNum = parseAmount(amountInput);
           if (amountNum <= 0) return;
           var txType = (type && String(type).toLowerCase()) || 'expense';
-          var payload = { type: txType, amount: amountNum, category: category, date: date, note: note };
+          var modeEl = document.querySelector('input[name="mode"]:checked');
+          var modeVal = modeEl ? modeEl.value : 'cash';
+          var payload = { type: txType, amount: amountNum, category: category, date: date, mode: modeVal, note: note };
           if (editingTransactionId) {
             updateTransaction(editingTransactionId, payload);
             editingTransactionId = null;
@@ -628,6 +701,8 @@
           if (d) d.value = todayStr();
           var incomeRadio = document.getElementById('type-income');
           if (incomeRadio) incomeRadio.checked = true;
+          var modeCash = document.getElementById('mode-cash');
+          if (modeCash) modeCash.checked = true;
           updateCategoryRequired();
           updateSummary();
         } catch (err) {
@@ -714,6 +789,7 @@
 
   function init() {
     initTheme();
+    initContext();
     try {
       getUserId();
     } catch (err) {}
